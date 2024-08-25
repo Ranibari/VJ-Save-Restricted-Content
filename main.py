@@ -55,8 +55,8 @@ def progress(current, total, message, type):
 
 # Start command handler
 @bot.on_message(filters.command(["start"]))
-def send_start(client, message):
-    bot.send_message(
+async def send_start(client, message):
+    await bot.send_message(
         message.chat.id,
         f"**👋 Hi {message.from_user.mention}, I am Save Restricted Bot, I can send you restricted content by its post link**\n\n{USAGE}",
         reply_markup=InlineKeyboardMarkup(
@@ -64,6 +64,7 @@ def send_start(client, message):
         ),
         reply_to_message_id=message.id
     )
+
 
 # Message handler
 @bot.on_message(filters.text)
@@ -139,12 +140,12 @@ def save(client, message):
             time.sleep(3)
 
 # Handle private messages
-def handle_private(message, chatid, msgid):
-    msg = acc.get_messages(chatid, msgid)
+async def handle_private(message, chatid, msgid):
+    msg = await acc.get_messages(chatid, msgid)  # ensure this is awaited
     msg_type = get_message_type(msg)
 
     if msg_type == "Text":
-        bot.send_message(message.chat.id, msg.text, entities=msg.entities, reply_to_message_id=message.id)
+        await bot.send_message(message.chat.id, msg.text, entities=msg.entities, reply_to_message_id=message.id)
         return
 
     smsg = bot.send_message(message.chat.id, '__Downloading__', reply_to_message_id=message.id)
