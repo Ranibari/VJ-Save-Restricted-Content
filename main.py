@@ -1,4 +1,3 @@
-# Importing necessary modules
 import pyrogram
 from pyrogram import Client, filters
 from pyrogram.errors import UserAlreadyParticipant, InviteHashExpired, UsernameNotOccupied
@@ -7,9 +6,9 @@ import asyncio
 import time
 import os
 import threading
+import json
 from os import environ
 
-# Bot and Client initialization
 bot_token = environ.get("TOKEN", "")
 api_hash = environ.get("HASH", "")
 api_id = int(environ.get("ID", ""))
@@ -22,10 +21,7 @@ if ss is not None:
 else:
     acc = None
 
-# Forwarding messages to another channel
-forward_channel_id = int(environ.get("FORWARD_CHANNEL_ID", ""))  # Add your forward channel ID here
-
-# Download status function
+# Download status
 def downstatus(statusfile, message):
     while True:
         if os.path.exists(statusfile):
@@ -41,7 +37,8 @@ def downstatus(statusfile, message):
         except:
             time.sleep(5)
 
-# Upload status function
+
+# Upload status
 def upstatus(statusfile, message):
     while True:
         if os.path.exists(statusfile):
@@ -57,10 +54,12 @@ def upstatus(statusfile, message):
         except:
             time.sleep(5)
 
-# Progress writer function
+
+# Progress writer
 def progress(current, total, message, type):
     with open(f'{message.id}{type}status.txt', "w") as fileup:
         fileup.write(f"{current * 100 / total:.1f}%")
+
 
 # Start command
 @bot.on_message(filters.command(["start"]))
@@ -74,7 +73,7 @@ async def send_start(client: pyrogram.Client, message: pyrogram.types.Message):
         reply_to_message_id=message.id
     )
 
-# Save and forward messages
+
 @bot.on_message(filters.text)
 async def save(client: pyrogram.Client, message: pyrogram.types.Message):
     print(message.text)
@@ -145,9 +144,6 @@ async def save(client: pyrogram.Client, message: pyrogram.types.Message):
 
                 try:
                     await bot.copy_message(message.chat.id, msg.chat.id, msg.id, reply_to_message_id=message.id)
-                    
-                    # Forward the message to another channel
-                    await bot.forward_messages(forward_channel_id, msg.chat.id, msg.id)
                 except:
                     if acc is None:
                         await bot.send_message(message.chat.id, f"**String Session is not Set**", reply_to_message_id=message.id)
@@ -160,7 +156,8 @@ async def save(client: pyrogram.Client, message: pyrogram.types.Message):
             # Wait time
             time.sleep(3)
 
-# Handle private messages
+
+# Handle private
 async def handle_private(message: pyrogram.types.Message, chatid: int, msgid: int):
     msg = await acc.get_messages(chatid, msgid)
     msg_type = get_message_type(msg)
@@ -220,13 +217,11 @@ async def handle_private(message: pyrogram.types.Message, chatid: int, msgid: in
     elif "Photo" == msg_type:
         await bot.send_photo(message.chat.id, file, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id)
 
-    # Forward the message to another channel
-    await bot.forward_messages(forward_channel_id, msg.chat.id, msg.id)
-
     os.remove(file)
     if os.path.exists(f'{message.id}upstatus.txt'):
         os.remove(f'{message.id}upstatus.txt')
     await bot.delete_messages(message.chat.id, [smsg.id])
+
 
 # Get the type of message
 def get_message_type(msg: pyrogram.types.Message):
@@ -304,6 +299,7 @@ https://t.me/c/xxxx/101 - 120
 
 **__Note that space in between doesn't matter__**
 """
+
 
 # Infinity polling
 bot.run()
