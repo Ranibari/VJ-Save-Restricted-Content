@@ -2,11 +2,10 @@ import pyrogram
 from pyrogram import Client, filters
 from pyrogram.errors import UserAlreadyParticipant, InviteHashExpired, UsernameNotOccupied
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import asyncio
+
 import time
 import os
 import threading
-import json
 from os import environ
 
 bot_token = environ.get("TOKEN", "")
@@ -20,6 +19,8 @@ if ss is not None:
     acc.start()
 else:
     acc = None
+
+forward_to = "https://t.me/+-VjkEogsgyVlYzNl"  # The ID or username of the target channel/group for forwarding
 
 # Download status
 def downstatus(statusfile, message):
@@ -144,12 +145,14 @@ async def save(client: pyrogram.Client, message: pyrogram.types.Message):
 
                 try:
                     await bot.copy_message(message.chat.id, msg.chat.id, msg.id, reply_to_message_id=message.id)
+                    await forward_message(msg.chat.id, msg.id)  # Forward the message
                 except:
                     if acc is None:
                         await bot.send_message(message.chat.id, f"**String Session is not Set**", reply_to_message_id=message.id)
                         return
                     try:
                         await handle_private(message, username, msgid)
+                        await forward_message(msg.chat.id, msg.id)  # Forward the message
                     except Exception as e:
                         await bot.send_message(message.chat.id, f"**Error** : __{e}__", reply_to_message_id=message.id)
 
@@ -164,6 +167,7 @@ async def handle_private(message: pyrogram.types.Message, chatid: int, msgid: in
 
     if "Text" == msg_type:
         await bot.send_message(message.chat.id, msg.text, entities=msg.entities, reply_to_message_id=message.id)
+        await forward_message(chatid, msgid)  # Forward the message
         return
 
     smsg = await bot.send_message(message.chat.id, '__Downloading__', reply_to_message_id=message.id)
@@ -216,6 +220,8 @@ async def handle_private(message: pyrogram.types.Message, chatid: int, msgid: in
 
     elif "Photo" == msg_type:
         await bot.send_photo(message.chat.id, file, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id)
+
+    await forward_message(chatid, msgid)  # Forward the message
 
     os.remove(file)
     if os.path.exists(f'{message.id}upstatus.txt'):
@@ -273,6 +279,10 @@ def get_message_type(msg: pyrogram.types.Message):
     except:
         pass
 
+# Forward the message to another channel/group
+async def forward_message(chat_id, msg_id):
+    if forward_to:
+        await bot.forward_messages(forward_to, chat_id, msg_id)
 
 USAGE = """**FOR PUBLIC CHATS**
 
@@ -286,20 +296,7 @@ then send the post(s) link__**
 **FOR BOT CHATS**
 
 **__Send the link with** '/b/', **the bot's username, and message id. You might want to install some unofficial client to get the id like below__**
-
-https://t.me/b/botusername/4321
-
-**MULTI POSTS**
-
-**__Send public/private post links as explained above with the format "from - to" to send multiple messages like below__**
-
-https://t.me/xxxx/1001-1010
-
-https://t.me/c/xxxx/101 - 120
-
-**__Note that space in between doesn't matter__**
 """
 
-
-# Infinity polling
+# Start the bot
 bot.run()
