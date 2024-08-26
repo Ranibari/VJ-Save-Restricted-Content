@@ -20,7 +20,7 @@ if ss is not None:
 else:
     acc = None
 
-forward_to = "https://t.me/+-VjkEogsgyVlYzNl"  # The ID or username of the target channel/group for forwarding
+forward_to = "-1002158986827"  # The ID or username of the target channel/group for forwarding
 
 # Download status
 def downstatus(statusfile, message):
