@@ -1,3 +1,4 @@
+import pyrogram
 import os
 import time
 import threading
@@ -5,7 +6,10 @@ from os import environ
 from pyrogram import Client, filters
 from pyrogram.errors import UserAlreadyParticipant, InviteHashExpired, UsernameNotOccupied
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
+import asyncio
+import os
+import json
+from os import environ
 # Bot configuration
 bot_token = environ.get("TOKEN", "")
 api_hash = environ.get("HASH", "")
