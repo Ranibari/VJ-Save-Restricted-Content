@@ -1,19 +1,18 @@
-import pyrogram
+import os
+import time
+import threading
+from os import environ
 from pyrogram import Client, filters
 from pyrogram.errors import UserAlreadyParticipant, InviteHashExpired, UsernameNotOccupied
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import asyncio
-import time
-import os
-import threading
-import json
-from os import environ
 
+# Bot configuration
 bot_token = environ.get("TOKEN", "")
 api_hash = environ.get("HASH", "")
 api_id = int(environ.get("ID", ""))
 bot = Client("mybot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
+# String session for user account
 ss = environ.get("STRING", "")
 if ss is not None:
     acc = Client("myacc", api_id=api_id, api_hash=api_hash, session_string=ss)
@@ -26,7 +25,6 @@ def downstatus(statusfile, message):
     while True:
         if os.path.exists(statusfile):
             break
-
     time.sleep(3)
     while os.path.exists(statusfile):
         with open(statusfile, "r") as downread:
@@ -37,13 +35,11 @@ def downstatus(statusfile, message):
         except:
             time.sleep(5)
 
-
 # Upload status
 def upstatus(statusfile, message):
     while True:
         if os.path.exists(statusfile):
             break
-
     time.sleep(3)
     while os.path.exists(statusfile):
         with open(statusfile, "r") as upread:
@@ -54,16 +50,14 @@ def upstatus(statusfile, message):
         except:
             time.sleep(5)
 
-
 # Progress writer
 def progress(current, total, message, type):
     with open(f'{message.id}{type}status.txt', "w") as fileup:
         fileup.write(f"{current * 100 / total:.1f}%")
 
-
 # Start command
 @bot.on_message(filters.command(["start"]))
-async def send_start(client: pyrogram.Client, message: pyrogram.types.Message):
+async def send_start(client: Client, message):
     await bot.send_message(
         message.chat.id,
         f"**__👋 Hi** **{message.from_user.mention}**, **I am Save Restricted Bot, I can send you restricted content by its post link__**\n\n{USAGE}",
@@ -73,24 +67,19 @@ async def send_start(client: pyrogram.Client, message: pyrogram.types.Message):
         reply_to_message_id=message.id
     )
 
-
+# Handle incoming messages
 @bot.on_message(filters.text)
-async def save(client: pyrogram.Client, message: pyrogram.types.Message):
+async def save(client: Client, message):
     print(message.text)
 
     # Joining chats
     if "https://t.me/+" in message.text or "https://t.me/joinchat/" in message.text:
-
         if acc is None:
             await bot.send_message(message.chat.id, f"**String Session is not Set**", reply_to_message_id=message.id)
             return
 
         try:
-            try:
-                await acc.join_chat(message.text)
-            except Exception as e:
-                await bot.send_message(message.chat.id, f"**Error** : __{e}__", reply_to_message_id=message.id)
-                return
+            await acc.join_chat(message.text)
             await bot.send_message(message.chat.id, "**Chat Joined**", reply_to_message_id=message.id)
         except UserAlreadyParticipant:
             await bot.send_message(message.chat.id, "**Chat already Joined**", reply_to_message_id=message.id)
@@ -99,66 +88,27 @@ async def save(client: pyrogram.Client, message: pyrogram.types.Message):
 
     # Getting message
     elif "https://t.me/" in message.text:
-
         datas = message.text.split("/")
-        temp = datas[-1].replace("?single", "").split("-")
-        fromID = int(temp[0].strip())
-        try:
-            toID = int(temp[1].strip())
-        except:
-            toID = fromID
+        chatid_str = datas[4]
+
+        if "c/" in message.text:
+            chatid = int("-100" + chatid_str)
+        else:
+            chatid = chatid_str
+
+        message_range = datas[-1].split("-")
+        fromID = int(message_range[0].strip())
+        toID = int(message_range[1].strip()) if len(message_range) > 1 else fromID
 
         for msgid in range(fromID, toID + 1):
-
-            # Private
-            if "https://t.me/c/" in message.text:
-                chatid = int("-100" + datas[4])
-
-                if acc is None:
-                    await bot.send_message(message.chat.id, f"**String Session is not Set**", reply_to_message_id=message.id)
-                    return
-
+            try:
                 await handle_private(message, chatid, msgid)
-
-            # Bot
-            elif "https://t.me/b/" in message.text:
-                username = datas[4]
-
-                if acc is None:
-                    await bot.send_message(message.chat.id, f"**String Session is not Set**", reply_to_message_id=message.id)
-                    return
-                try:
-                    await handle_private(message, username, msgid)
-                except Exception as e:
-                    await bot.send_message(message.chat.id, f"**Error** : __{e}__", reply_to_message_id=message.id)
-
-            # Public
-            else:
-                username = datas[3]
-
-                try:
-                    msg = await bot.get_messages(username, msgid)
-                except UsernameNotOccupied:
-                    await bot.send_message(message.chat.id, f"**The username is not occupied by anyone**", reply_to_message_id=message.id)
-                    return
-
-                try:
-                    await bot.copy_message(message.chat.id, msg.chat.id, msg.id, reply_to_message_id=message.id)
-                except:
-                    if acc is None:
-                        await bot.send_message(message.chat.id, f"**String Session is not Set**", reply_to_message_id=message.id)
-                        return
-                    try:
-                        await handle_private(message, username, msgid)
-                    except Exception as e:
-                        await bot.send_message(message.chat.id, f"**Error** : __{e}__", reply_to_message_id=message.id)
-
-            # Wait time
+            except Exception as e:
+                await bot.send_message(message.chat.id, f"**Error** : __{e}__", reply_to_message_id=message.id)
             time.sleep(3)
 
-
-# Handle private
-async def handle_private(message: pyrogram.types.Message, chatid: int, msgid: int):
+# Handle private messages
+async def handle_private(message, chatid, msgid):
     msg = await acc.get_messages(chatid, msgid)
     msg_type = get_message_type(msg)
 
@@ -222,9 +172,8 @@ async def handle_private(message: pyrogram.types.Message, chatid: int, msgid: in
         os.remove(f'{message.id}upstatus.txt')
     await bot.delete_messages(message.chat.id, [smsg.id])
 
-
 # Get the type of message
-def get_message_type(msg: pyrogram.types.Message):
+def get_message_type(msg):
     try:
         msg.document.file_id
         return "Document"
@@ -273,7 +222,6 @@ def get_message_type(msg: pyrogram.types.Message):
     except:
         pass
 
-
 USAGE = """**FOR PUBLIC CHATS**
 
 **__Just send the post(s) link__**
@@ -299,7 +247,6 @@ https://t.me/c/xxxx/101 - 120
 
 **__Note that space in between doesn't matter__**
 """
-
 
 # Infinity polling
 bot.run()
