@@ -1,4 +1,3 @@
-import pyrogram
 import os
 import time
 import threading
@@ -10,6 +9,7 @@ import asyncio
 import os
 import json
 from os import environ
+
 # Bot configuration
 bot_token = environ.get("TOKEN", "")
 api_hash = environ.get("HASH", "")
@@ -90,12 +90,12 @@ async def save(client: Client, message):
         except InviteHashExpired:
             await bot.send_message(message.chat.id, "**Invalid Link**", reply_to_message_id=message.id)
 
-    # Getting message
+    # Handling message links
     elif "https://t.me/" in message.text:
         datas = message.text.split("/")
         chatid_str = datas[4]
-
         if "c/" in message.text:
+            chatid_str = chatid_str.split('/')[0]
             chatid = int("-100" + chatid_str)
         else:
             chatid = chatid_str
