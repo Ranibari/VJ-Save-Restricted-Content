@@ -6,9 +6,8 @@ from pyrogram import Client, filters
 from pyrogram.errors import UserAlreadyParticipant, InviteHashExpired, UsernameNotOccupied
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
-import os
-import json
-from os import environ
+import math
+from pathlib import Path
 
 # Bot configuration
 bot_token = environ.get("TOKEN", "")
@@ -23,6 +22,21 @@ if ss is not None:
     acc.start()
 else:
     acc = None
+
+# File chunking function
+def split_file(file_path, max_chunk_size):
+    file_size = Path(file_path).stat().st_size
+    chunks = math.ceil(file_size / max_chunk_size)
+    chunk_paths = []
+
+    with open(file_path, 'rb') as file:
+        for i in range(chunks):
+            chunk_path = f'{file_path}.part{i}'
+            with open(chunk_path, 'wb') as chunk_file:
+                chunk_file.write(file.read(max_chunk_size))
+            chunk_paths.append(chunk_path)
+
+    return chunk_paths
 
 # Download status
 def downstatus(statusfile, message):
@@ -129,50 +143,56 @@ async def handle_private(message, chatid, msgid):
     upsta = threading.Thread(target=lambda: upstatus(f'{message.id}upstatus.txt', smsg), daemon=True)
     upsta.start()
 
-    if "Document" == msg_type:
-        try:
-            thumb = await acc.download_media(msg.document.thumbs[0].file_id)
-        except:
-            thumb = None
+    max_chunk_size = 1.95 * 1024 * 1024 * 1024  # Set chunk size to just below 2 GB
+    chunk_paths = split_file(file, max_chunk_size)
 
-        await bot.send_document(message.chat.id, file, thumb=thumb, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
-        if thumb is not None:
-            os.remove(thumb)
+    for chunk_path in chunk_paths:
+        if "Document" == msg_type:
+            try:
+                thumb = await acc.download_media(msg.document.thumbs[0].file_id)
+            except:
+                thumb = None
 
-    elif "Video" == msg_type:
-        try:
-            thumb = await acc.download_media(msg.video.thumbs[0].file_id)
-        except:
-            thumb = None
+            await bot.send_document(message.chat.id, chunk_path, thumb=thumb, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
+            if thumb is not None:
+                os.remove(thumb)
 
-        await bot.send_video(message.chat.id, file, duration=msg.video.duration, width=msg.video.width, height=msg.video.height, thumb=thumb, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
-        if thumb is not None:
-            os.remove(thumb)
+        elif "Video" == msg_type:
+            try:
+                thumb = await acc.download_media(msg.video.thumbs[0].file_id)
+            except:
+                thumb = None
 
-    elif "Animation" == msg_type:
-        await bot.send_animation(message.chat.id, file, reply_to_message_id=message.id)
+            await bot.send_video(message.chat.id, chunk_path, duration=msg.video.duration, width=msg.video.width, height=msg.video.height, thumb=thumb, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
+            if thumb is not None:
+                os.remove(thumb)
 
-    elif "Sticker" == msg_type:
-        await bot.send_sticker(message.chat.id, file, reply_to_message_id=message.id)
+        elif "Animation" == msg_type:
+            await bot.send_animation(message.chat.id, chunk_path, reply_to_message_id=message.id)
 
-    elif "Voice" == msg_type:
-        await bot.send_voice(message.chat.id, file, caption=msg.caption, thumb=thumb, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
+        elif "Sticker" == msg_type:
+            await bot.send_sticker(message.chat.id, chunk_path, reply_to_message_id=message.id)
 
-    elif "Audio" == msg_type:
-        try:
-            thumb = await acc.download_media(msg.audio.thumbs[0].file_id)
-        except:
-            thumb = None
+        elif "Voice" == msg_type:
+            await bot.send_voice(message.chat.id, chunk_path, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
 
-        await bot.send_audio(message.chat.id, file, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
-        if thumb is not None:
-            os.remove(thumb)
+        elif "Audio" == msg_type:
+            try:
+                thumb = await acc.download_media(msg.audio.thumbs[0].file_id)
+            except:
+                thumb = None
 
-    elif "Photo" == msg_type:
-        await bot.send_photo(message.chat.id, file, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id)
+            await bot.send_audio(message.chat.id, chunk_path, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id, progress=progress, progress_args=[message, "up"])
+            if thumb is not None:
+                os.remove(thumb)
+
+        elif "Photo" == msg_type:
+            await bot.send_photo(message.chat.id, chunk_path, caption=msg.caption, caption_entities=msg.caption_entities, reply_to_message_id=message.id)
+
+        os.remove(chunk_path)
 
     os.remove(file)
-    if os.path.exists(f'{message.id}upstatus.txt'):
+    if os.exists(f'{message.id}upstatus.txt'):
         os.remove(f'{message.id}upstatus.txt')
     await bot.delete_messages(message.chat.id, [smsg.id])
 
@@ -247,10 +267,8 @@ https://t.me/b/botusername/4321
 
 https://t.me/xxxx/1001-1010
 
-https://t.me/c/xxxx/101 - 120
-
-**__Note that space in between doesn't matter__**
+https://t.me/c/xxxx/101
 """
 
-# Infinity polling
+# Start the bot
 bot.run()
